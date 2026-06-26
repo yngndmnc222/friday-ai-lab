@@ -20,6 +20,12 @@ from backend.embeddings import (  # noqa: E402
     chunk_and_embed,
     chunk_preprocessed_data,
 )
+from backend.chat import (  # noqa: E402
+    ChatClient,
+    ChatError,
+    build_chat_messages,
+    rank_context_records,
+)
 
 
 def load_local_env() -> None:
@@ -76,27 +82,77 @@ def records_table(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def render_chat() -> None:
     st.subheader("Citizen Query Resolution Chatbot")
+    chat_controls = st.columns([1, 1, 4])
+    embedded_chunks = len(st.session_state.embedding_records)
+    chat_controls[0].metric("Knowledge chunks", embedded_chunks)
+    if chat_controls[1].button("Clear Chat", use_container_width=True):
+        st.session_state.chat_history = []
+        if hasattr(st, "rerun"):
+            st.rerun()
+        else:
+            st.experimental_rerun()
 
     for entry in st.session_state.chat_history:
         with st.chat_message(entry["role"]):
             st.write(entry["content"])
+            context_sources = entry.get("context_sources")
+            if context_sources:
+                st.caption("Sources: " + ", ".join(context_sources))
 
     prompt = st.chat_input("Ask a public service question")
     if not prompt:
         return
 
     st.session_state.chat_history.append({"role": "user", "content": prompt})
-    embedded_chunks = len(st.session_state.embedding_records)
-    response = (
-        f"I received your question: {prompt}"
-        if embedded_chunks == 0
-        else f"I received your question and have {embedded_chunks} embedded chunks available."
+    with st.chat_message("user"):
+        st.write(prompt)
+
+    context_records: list[dict[str, Any]] = []
+    retrieval_warning = ""
+    if st.session_state.embedding_records:
+        try:
+            context_records = rank_context_records(
+                prompt,
+                st.session_state.embedding_records,
+                embedding_client=EmbeddingClient(),
+                top_k=4,
+            )
+        except (EmbeddingError, ValueError) as exc:
+            retrieval_warning = f"Knowledge search skipped: {exc}"
+
+    messages = build_chat_messages(
+        st.session_state.chat_history,
+        context_records=context_records,
     )
-    st.session_state.chat_history.append({"role": "assistant", "content": response})
-    if hasattr(st, "rerun"):
-        st.rerun()
-    else:
-        st.experimental_rerun()
+
+    with st.chat_message("assistant"):
+        if retrieval_warning:
+            st.warning(retrieval_warning)
+
+        try:
+            with st.spinner("Thinking..."):
+                response = ChatClient().complete(messages)
+            st.write(response)
+        except ChatError as exc:
+            response = str(exc)
+            st.error(response)
+
+        context_sources = sorted(
+            {
+                record.get("source") or record.get("id", "chunk")
+                for record in context_records
+            }
+        )
+        if context_sources:
+            st.caption("Sources: " + ", ".join(context_sources))
+
+    st.session_state.chat_history.append(
+        {
+            "role": "assistant",
+            "content": response,
+            "context_sources": context_sources,
+        }
+    )
 
 
 def render_embeddings_workspace() -> None:

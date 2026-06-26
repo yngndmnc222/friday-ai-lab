@@ -13,9 +13,11 @@ from typing import Any, Iterable, Sequence
 
 import requests
 
+from .api_urls import endpoint_url
+
 
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
-DEFAULT_EMBEDDINGS_URL = "https://api.openai.com/v1/embeddings"
+DEFAULT_EMBEDDINGS_URL = "https://api.openai.com"
 DEFAULT_CHUNK_WORDS = 700
 DEFAULT_CHUNK_OVERLAP_WORDS = 100
 
@@ -126,7 +128,7 @@ def chunk_text(
 
 
 class EmbeddingClient:
-    """Small HTTP client for an OpenAI-compatible embeddings endpoint."""
+    """Small requests-based client for a LiteLLM-compatible embeddings endpoint."""
 
     def __init__(
         self,
@@ -140,17 +142,27 @@ class EmbeddingClient:
         if batch_size <= 0:
             raise ValueError("batch_size must be greater than 0")
 
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.api_key = (
+            api_key
+            or os.getenv("LLM_API_KEY")
+            or os.getenv("OPENAI_API_KEY")
+        )
         self.model = (
             model
+            or os.getenv("LLM_EMBEDDING_MODEL")
+            or os.getenv("EMBEDDING_MODEL")
             or os.getenv("OPENAI_EMBEDDING_MODEL")
             or DEFAULT_EMBEDDING_MODEL
         )
-        self.api_url = (
+        configured_url = (
             api_url
+            or os.getenv("LITELLM_API_URL")
+            or os.getenv("LLM_EMBEDDINGS_URL")
             or os.getenv("OPENAI_EMBEDDINGS_URL")
+            or os.getenv("OPENAI_BASE_URL")
             or DEFAULT_EMBEDDINGS_URL
         )
+        self.api_url = endpoint_url(configured_url, "embeddings")
         self.timeout_seconds = timeout_seconds
         self.batch_size = batch_size
 
@@ -165,7 +177,7 @@ class EmbeddingClient:
             raise ValueError("texts cannot contain empty strings")
 
         if not self.api_key:
-            raise EmbeddingError("OPENAI_API_KEY is required to call embeddings")
+            raise EmbeddingError("LLM_API_KEY is required to call embeddings")
 
         embeddings: list[list[float]] = []
         for start_index in range(0, len(clean_texts), self.batch_size):
