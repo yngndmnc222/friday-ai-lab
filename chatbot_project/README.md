@@ -45,5 +45,25 @@ This is a conversational AI chatbot to assist citizens with public service queri
 - Implementing a fallback mechanism for human agent intervention.
 - Logging and analytics for user interactions.
 
+## Embedding Preparation
+
+The backend can now prepare preprocessed data for an in-memory vector database:
+
+```python
+from backend.embeddings import chunk_and_embed
+
+records = chunk_and_embed(
+    processed_data,
+    source="uploaded-document.pdf",
+)
+```
+
+`chunk_and_embed` returns records with chunk text, word positions, metadata, and
+the embedding vector. It does not save anything yet, so the database layer can
+persist those records when it is ready.
+
+Set `OPENAI_API_KEY` before calling the embedding model. Optional overrides:
+`OPENAI_EMBEDDING_MODEL` and `OPENAI_EMBEDDINGS_URL`.
+
 ## License
 Licensed under the MIT License.
