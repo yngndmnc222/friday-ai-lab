@@ -1,12 +1,11 @@
 import json
 import csv
 import os
-from PyPDF2 import PdfReader
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 def preprocess_text(text):
+	from nltk.corpus import stopwords
+	from nltk.tokenize import word_tokenize
+
 	# Tokenize the text
 	tokens = word_tokenize(text)
     
@@ -39,6 +38,8 @@ def read_data(file_path):
 			return file.read()
 
 	elif file_extension == '.pdf':
+		from PyPDF2 import PdfReader
+
 		with open(file_path, 'rb') as file:
 			reader = PdfReader(file)
 			text = ''
@@ -57,7 +58,6 @@ if __name__ == "__main__":
 import json
 import csv
 import os
-from PyPDF2 import PdfReader
 
 def read_data(file_path):
 	_, file_extension = os.path.splitext(file_path)
@@ -76,6 +76,8 @@ def read_data(file_path):
 			return file.read()
 
 	elif file_extension == '.pdf':
+		from PyPDF2 import PdfReader
+
 		with open(file_path, 'rb') as file:
 			reader = PdfReader(file)
 			text = ''
