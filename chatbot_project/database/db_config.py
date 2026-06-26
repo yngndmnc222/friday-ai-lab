@@ -7,8 +7,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         text TEXT NOT NULL,
         embedding BLOB NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        vector REAL[] NOT NULL
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )''')
     connection.commit()
     connection.close()
